@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Readmark</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #EEF1FA;
+            --bg-surface: #F9FAFF;
+            --bg-code: #E4E8F7;
+            --ink: #171B35;
+            --ink-muted: #5A6080;
+            --ink-faint: #AAB0CC;
+            --accent: #4B5FD9;
+            --accent2: #9B6FE8;
+            --accent-light: #E6E9FA;
+            --border: rgba(23, 27, 53, 0.09);
+            --border-mid: rgba(23, 27, 53, 0.16);
+            --shadow: 0 2px 16px rgba(75, 95, 217, 0.07);
+            --shadow-lg: 0 8px 48px rgba(75, 95, 217, 0.13);
+            --radius: 12px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0F1120;
+            --bg-surface: #161929;
+            --bg-code: #1D2038;
+            --ink: #DDE2FF;
+            --ink-muted: #8892C8;
+            --ink-faint: #2E3460;
+            --accent: #7B8EF0;
+            --accent2: #B88AF5;
+            --accent-light: #1A1F3D;
+            --border: rgba(221, 226, 255, 0.08);
+            --border-mid: rgba(221, 226, 255, 0.14);
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+            --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.55);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+            min-height: 100vh;
+            transition: background var(--transition), color var(--transition);
+            overflow-x: hidden;
+        }
+
+        /* ── GRAIN OVERLAY ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.6;
+        }
+
+        /* ── HEADER ── */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2.5rem;
+            height: 64px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            transition: background var(--transition), border-color var(--transition);
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.35rem;
+            color: var(--ink);
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.4);
+                opacity: 0.7;
+            }
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            letter-spacing: 0.01em;
+        }
+
+        .btn-ghost {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--border-mid);
+            color: var(--ink-muted);
+        }
+
+        .btn-ghost:hover {
+            background: var(--border);
+            color: var(--ink);
+            border-color: transparent;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            padding: 9px 20px;
+            background: var(--accent);
+            border: none;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 18px rgba(26, 122, 63, 0.4);
+        }
+
+        .btn-primary:active,
+        .btn-ghost:active {
+            transform: translateY(0);
+        }
+
+        /* ── DARK TOGGLE ── */
+        .theme-toggle {
+            width: 44px;
+            height: 24px;
+            border-radius: 12px;
+            background: var(--border-mid);
+            border: none;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .theme-toggle::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--ink);
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease;
+        }
+
+        [data-theme="dark"] .theme-toggle::after {
+            transform: translateX(20px);
+            background: var(--accent);
+        }
+
+        .toggle-label {
+            font-size: 0.78rem;
+            color: var(--ink-muted);
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        /* ── MAIN LAYOUT ── */
+        main {
+            position: relative;
+            z-index: 1;
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 3rem 2rem 6rem;
+        }
+
+        /* ── UPLOAD ZONE ── */
+        #upload-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 420px;
+            border: 2px dashed var(--border-mid);
+            border-radius: 20px;
+            background: var(--bg-surface);
+            transition: all 0.25s ease;
+            cursor: pointer;
+            gap: 1.5rem;
+            padding: 3rem;
+            position: relative;
+            overflow: hidden;
+            animation: fadeUp 0.6s ease both;
+        }
+
+        #upload-zone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 50%, var(--accent-light), transparent 65%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+
+        #upload-zone.drag-over {
+            border-color: var(--accent);
+            border-style: solid;
+            transform: scale(1.01);
+        }
+
+        #upload-zone.drag-over::before {
+            opacity: 1;
+        }
+
+        .upload-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background: var(--accent-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        #upload-zone:hover .upload-icon {
+            transform: translateY(-4px) rotate(-3deg);
+        }
+
+        .upload-icon svg {
+            width: 36px;
+            height: 36px;
+            stroke: var(--accent);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .upload-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            color: var(--ink);
+            text-align: center;
+            line-height: 1.25;
+        }
+
+        .upload-sub {
+            font-size: 0.9rem;
+            color: var(--ink-muted);
+            text-align: center;
+            max-width: 340px;
+            line-height: 1.6;
+        }
+
+        .upload-sub span {
+            color: var(--accent);
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .upload-badge {
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 5px 14px;
+            border-radius: 100px;
+            background: var(--border);
+            color: var(--ink-muted);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* ── CONTENT AREA ── */
+        #content-wrapper {
+            display: none;
+            animation: fadeUp 0.5s ease both;
+        }
+
+        /* ── META BAR ── */
+        .meta-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.25rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 2.5rem;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .file-name {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.83rem;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-name .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .meta-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.78rem;
+            color: var(--ink-faint);
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* ── MARKDOWN CONTENT ── */
+        #content {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 3rem 3.5rem;
+            box-shadow: var(--shadow);
+            transition: background var(--transition), border-color var(--transition);
+            line-height: 1.8;
+            font-size: 1rem;
+            color: var(--ink);
+        }
+
+        #content h1,
+        #content h2,
+        #content h3,
+        #content h4,
+        #content h5,
+        #content h6 {
+            font-family: 'Playfair Display', serif;
+            color: var(--ink);
+            line-height: 1.25;
+            margin-top: 2.2em;
+            margin-bottom: 0.65em;
+        }
+
+        #content>*:first-child {
+            margin-top: 0 !important;
+        }
+
+        #content h1 {
+            font-size: 2.4rem;
+            letter-spacing: -0.03em;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        #content h2 {
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+        }
+
+        #content h2::before {
+            content: '§';
+            color: var(--accent);
+            margin-right: 0.45rem;
+            font-style: italic;
+            opacity: 0.65;
+        }
+
+        #content h3 {
+            font-size: 1.3rem;
+            font-style: italic;
+        }
+
+        #content h4 {
+            font-size: 1.1rem;
+            color: var(--ink-muted);
+        }
+
+        #content p {
+            margin-bottom: 1.2em;
+        }
+
+        #content a {
+            color: var(--accent);
+            text-decoration: underline;
+            text-decoration-color: transparent;
+            text-underline-offset: 3px;
+            transition: text-decoration-color 0.2s ease;
+            font-weight: 500;
+        }
+
+        #content a:hover {
+            text-decoration-color: var(--accent);
+        }
+
+        #content strong {
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        #content em {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+        }
+
+        #content ul,
+        #content ol {
+            padding-left: 1.6rem;
+            margin-bottom: 1.2em;
+        }
+
+        #content li {
+            margin-bottom: 0.45em;
+        }
+
+        #content li::marker {
+            color: var(--accent);
+        }
+
+        #content blockquote {
+            border-left: 3px solid var(--accent);
+            padding: 0.75rem 1.5rem;
+            margin: 1.8em 0;
+            background: var(--accent-light);
+            border-radius: 0 10px 10px 0;
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 1.05rem;
+            color: var(--ink-muted);
+        }
+
+        #content blockquote p {
+            margin: 0;
+        }
+
+        #content code {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85em;
+            background: var(--bg-code);
+            color: var(--accent);
+            padding: 2px 7px;
+            border-radius: 5px;
+        }
+
+        #content pre {
+            background: var(--bg-code);
+            border-radius: 12px;
+            padding: 1.4rem 1.6rem;
+            overflow-x: auto;
+            margin: 1.5em 0;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        #content pre code {
+            background: none;
+            padding: 0;
+            color: var(--ink);
+            font-size: 0.88rem;
+            line-height: 1.7;
+        }
+
+        #content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5em 0;
+            font-size: 0.93rem;
+        }
+
+        #content th {
+            background: var(--accent-light);
+            color: var(--accent);
+            font-weight: 500;
+            padding: 0.65rem 1rem;
+            text-align: left;
+            border-bottom: 2px solid var(--accent);
+            font-size: 0.82rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        #content td {
+            padding: 0.65rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--ink-muted);
+        }
+
+        #content tr:last-child td {
+            border-bottom: none;
+        }
+
+        #content tr:hover td {
+            background: var(--border);
+        }
+
+        #content hr {
+            border: none;
+            height: 1px;
+            background: var(--border-mid);
+            margin: 2.5em 0;
+            position: relative;
+        }
+
+        #content hr::after {
+            content: '✦';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-surface);
+            padding: 0 12px;
+            color: var(--ink-faint);
+            font-size: 0.7rem;
+        }
+
+        #content img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin: 1em 0;
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes reveal {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #content>* {
+            animation: reveal 0.45s ease both;
+        }
+
+        #content>*:nth-child(1) {
+            animation-delay: 0.04s;
+        }
+
+        #content>*:nth-child(2) {
+            animation-delay: 0.08s;
+        }
+
+        #content>*:nth-child(3) {
+            animation-delay: 0.12s;
+        }
+
+        #content>*:nth-child(4) {
+            animation-delay: 0.16s;
+        }
+
+        #content>*:nth-child(5) {
+            animation-delay: 0.20s;
+        }
+
+        #content>*:nth-child(6) {
+            animation-delay: 0.24s;
+        }
+
+        #content>*:nth-child(7) {
+            animation-delay: 0.28s;
+        }
+
+        #content>*:nth-child(8) {
+            animation-delay: 0.32s;
+        }
+
+        #content>*:nth-child(9) {
+            animation-delay: 0.36s;
+        }
+
+        #content>*:nth-child(10) {
+            animation-delay: 0.40s;
+        }
+
+        /* ── READING PROGRESS ── */
+        #progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: var(--accent);
+            border-radius: 0 2px 2px 0;
+            width: 0%;
+            z-index: 200;
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        /* ── BACK TO TOP ── */
+        #back-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--ink);
+            color: var(--bg);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+            box-shadow: var(--shadow-lg);
+        }
+
+        #back-top.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #back-top:hover {
+            transform: translateY(-3px);
+        }
+
+        #back-top svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-mid);
+            border-radius: 99px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--ink-faint);
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 640px) {
+            header {
+                padding: 0 1.25rem;
+            }
+
+            main {
+                padding: 2rem 1.25rem 5rem;
+            }
+
+            #content {
+                padding: 2rem 1.5rem;
+            }
+
+            #content h1 {
+                font-size: 1.75rem;
+            }
+
+            .upload-title {
+                font-size: 1.5rem;
+            }
+
+            #upload-zone {
+                min-height: 320px;
+            }
+
+            .toggle-label {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="progress-bar"></div>
+
+    <header>
+        <div class="logo">
+            <div class="logo-dot"></div>
+            Readmark
+        </div>
+        <div class="header-actions">
+            <span class="toggle-label">Dark mode</span>
+            <button class="theme-toggle" id="theme-btn" aria-label="Toggle dark mode"></button>
+            <button class="btn btn-ghost" id="new-file-btn" style="display:none">
+                <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                </svg>
+                New file
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- UPLOAD ZONE -->
+        <div id="upload-zone" role="button" tabindex="0" aria-label="Upload markdown file">
+            <div class="upload-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+            </div>
+            <div class="upload-title">Drop your<br />markdown here</div>
+            <p class="upload-sub">
+                Drag & drop a <strong>.md</strong> or <strong>.markdown</strong> file,<br />
+                or <span id="browse-link">browse to upload</span>
+            </p>
+            <span class="upload-badge">.md · .markdown</span>
+            <input type="file" id="file-input" accept=".md,.markdown,.txt" />
+        </div>
+
+        <!-- CONTENT -->
+        <div id="content-wrapper">
+            <div class="meta-bar">
+                <div class="file-name">
+                    <span class="dot"></span>
+                    <span id="filename-label">document.md</span>
+                </div>
+                <div class="meta-stats">
+                    <span class="stat">
+                        <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                            fill="none">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <span id="word-count">0 words</span>
+                    </span>
+                    <span class="stat">
+                        <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                            fill="none">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        <span id="read-time">0 min read</span>
+                    </span>
+                </div>
+            </div>
+            <article id="content"></article>
+        </div>
+    </main>
+
+    <button id="back-top" aria-label="Back to top">
+        <svg viewBox="0 0 24 24">
+            <polyline points="18 15 12 9 6 15" />
+        </svg>
+    </button>
+
+    <script>
+        const html = document.documentElement;
+        const themeBtn = document.getElementById('theme-btn');
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const browseLink = document.getElementById('browse-link');
+        const wrapper = document.getElementById('content-wrapper');
+        const content = document.getElementById('content');
+        const newFileBtn = document.getElementById('new-file-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const backTop = document.getElementById('back-top');
+        const fileLabel = document.getElementById('filename-label');
+        const wordCount = document.getElementById('word-count');
+        const readTime = document.getElementById('read-time');
+
+        /* ── Theme ── */
+        const savedTheme = localStorage.getItem('readmark-theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+
+        themeBtn.addEventListener('click', () => {
+            const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('readmark-theme', next);
+        });
+
+        /* ── Marked options ── */
+        marked.setOptions({ breaks: true, gfm: true });
+
+        /* ── Upload ── */
+        function handleFile(file) {
+            if (!file) return;
+            if (!/\.(md|markdown|txt)$/i.test(file.name) && file.type !== 'text/plain' && !file.type.includes('markdown')) {
+                shake(uploadZone);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = e => renderMarkdown(e.target.result, file.name);
+            reader.readAsText(file);
+        }
+
+        function renderMarkdown(text, name) {
+            content.innerHTML = marked.parse(text);
+            fileLabel.textContent = name || 'document.md';
+
+            const words = text.trim().split(/\s+/).length;
+            wordCount.textContent = words.toLocaleString() + ' words';
+            readTime.textContent = Math.max(1, Math.round(words / 200)) + ' min read';
+
+            uploadZone.style.display = 'none';
+            wrapper.style.display = 'block';
+            newFileBtn.style.display = 'inline-flex';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        browseLink.addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+        uploadZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+        uploadZone.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+        });
+
+        uploadZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+
+        uploadZone.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        /* ── New file ── */
+        newFileBtn.addEventListener('click', () => {
+            wrapper.style.display = 'none';
+            uploadZone.style.display = 'flex';
+            newFileBtn.style.display = 'none';
+            fileInput.value = '';
+            progressBar.style.width = '0%';
+        });
+
+        /* ── Reading progress ── */
+        window.addEventListener('scroll', () => {
+            const docH = document.documentElement.scrollHeight - window.innerHeight;
+            const pct = docH > 0 ? (window.scrollY / docH) * 100 : 0;
+            progressBar.style.width = pct + '%';
+            backTop.classList.toggle('visible', window.scrollY > 400);
+        });
+
+        backTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+        /* ── Shake util ── */
+        function shake(el) {
+            el.style.animation = 'none';
+            el.getBoundingClientRect();
+            el.style.animation = 'shake 0.4s ease';
+            setTimeout(() => el.style.animation = '', 400);
+        }
+
+        const style = document.createElement('style');
+        style.textContent = `
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%{transform:translateX(-8px)}
+      40%{transform:translateX(8px)}
+      60%{transform:translateX(-5px)}
+      80%{transform:translateX(5px)}
+    }
+  `;
+        document.head.appendChild(style);
+    </script>
+</body>
+
+</html>
